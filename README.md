@@ -12,7 +12,9 @@ are confirmed but allowance is not enough from one of the participants.
 The contract is upgradeable from openzeppelin UUPS (EIP-1822) proxy. there is a upgrade task that
 can be used to easily upgrade the contract.  
  
+Also the contract has good test coverage, but for production use should be tested more and of course, audited by third party always.
 
+&nbsp;
 
 ## Addresses of deployed contract on mumbai network
 
@@ -61,9 +63,17 @@ PRIVATE_KEY=[private key for account]
 $ npx hardhat test
 ```
 
+### Run coverage
+
+```
+$ npx hardhat coverage
+```
+
 ### Deploy to Local Machine
 
-#### 1. Run development server using Truffle.
+&nbsp;
+
+#### 1. Run development server using hardhat.
 
 ```
 $ hh node --no-deploy
