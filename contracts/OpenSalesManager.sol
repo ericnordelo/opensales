@@ -84,7 +84,7 @@ contract OpenSalesManager is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownabl
 
     /**
      * @notice allows to approve an intention of sale at a price
-     * @dev the token will be tried to sell in the same transaction if a matching purchase proposal is found
+     * @dev the token will be tried to be sold in the same transaction if a matching purchase proposal is found
      * @param collection_ the address of the collection where the token belongs to
      * @param tokenId_ the id of the token to sell
      * @param paymentToken_ the address of the token to use for payment
@@ -141,6 +141,15 @@ contract OpenSalesManager is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownabl
         emit SaleProposed(collection_, tokenId_, paymentToken_, price_);
     }
 
+    /**
+     * @notice allows to approve an intention of purchase at a price
+     * @dev the token will be tried to be purchased in the same transaction if a matching sale proposal is found
+     * @param collection_ the address of the collection where the token belongs to
+     * @param tokenId_ the id of the token to sell
+     * @param paymentToken_ the address of the token to use for payment
+     * @param price_ the price of the sale proposal
+     * @param beneficiary_ the address receiving the NFT if the purchase is executed
+     */
     function approvePurchase(
         address collection_,
         uint256 tokenId_,
@@ -189,6 +198,76 @@ contract OpenSalesManager is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownabl
         });
 
         emit PurchaseProposed(collection_, tokenId_, paymentToken_, price_);
+    }
+
+    function cancelSaleProposal(
+        address collection_,
+        uint256 tokenId_,
+        address paymentToken_
+    ) external {
+        (OpenSaleProposal memory proposal, bytes32 id) = getOpenSaleProposal(
+            collection_,
+            tokenId_,
+            paymentToken_
+        );
+
+        require(proposal.owner == msg.sender, "Only owner can cancel");
+
+        delete _openSaleProposals[id];
+
+        emit SaleCanceled(collection_, tokenId_, paymentToken_);
+    }
+
+    function cancelPurchaseProposal(
+        address collection_,
+        uint256 tokenId_,
+        address paymentToken_
+    ) external {
+        (OpenPurchaseProposal memory proposal, bytes32 id) = getOpenPurchaseProposal(
+            collection_,
+            tokenId_,
+            paymentToken_
+        );
+
+        require(proposal.buyer == msg.sender, "Only buyer can cancel");
+
+        delete _openPurchaseProposals[id];
+
+        emit PurchaseCanceled(collection_, tokenId_, paymentToken_);
+    }
+
+    function getOpenSaleProposalById(bytes32 id_) public view returns (OpenSaleProposal memory proposal) {
+        require(_openSaleProposals[id_].price > 0, "Non-existent proposal");
+        proposal = _openSaleProposals[id_];
+    }
+
+    function getOpenSaleProposal(
+        address collection_,
+        uint256 tokenId_,
+        address paymentToken_
+    ) public view returns (OpenSaleProposal memory proposal, bytes32 id) {
+        // not using encodePacked to avoid collisions
+        id = keccak256(abi.encode(collection_, tokenId_, paymentToken_));
+        proposal = getOpenSaleProposalById(id);
+    }
+
+    function getOpenPurchaseProposalById(bytes32 id_)
+        public
+        view
+        returns (OpenPurchaseProposal memory proposal)
+    {
+        require(_openPurchaseProposals[id_].price > 0, "Non-existent proposal");
+        proposal = _openPurchaseProposals[id_];
+    }
+
+    function getOpenPurchaseProposal(
+        address collection_,
+        uint256 tokenId_,
+        address paymentToken_
+    ) public view returns (OpenPurchaseProposal memory proposal, bytes32 id) {
+        // not using encodePacked to avoid collisions
+        id = keccak256(abi.encode(collection_, tokenId_, paymentToken_));
+        proposal = getOpenPurchaseProposalById(id);
     }
 
     function _tryToSell(
@@ -241,76 +320,6 @@ contract OpenSalesManager is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownabl
         }
 
         bought = true;
-    }
-
-    function cancelSaleProposal(
-        address collection_,
-        uint256 tokenId_,
-        address paymentToken_
-    ) external {
-        (OpenSaleProposal memory proposal, bytes32 id) = getOpenSaleProposal(
-            collection_,
-            tokenId_,
-            paymentToken_
-        );
-
-        require(proposal.owner == msg.sender, "Only owner can cancel");
-
-        delete _openSaleProposals[id];
-
-        emit SaleCanceled(collection_, tokenId_, paymentToken_);
-    }
-
-    function cancelPurchaseProposal(
-        address collection_,
-        uint256 tokenId_,
-        address paymentToken_
-    ) external {
-        (OpenPurchaseProposal memory proposal, bytes32 id) = getOpenPurchaseProposal(
-            collection_,
-            tokenId_,
-            paymentToken_
-        );
-
-        require(proposal.buyer == msg.sender, "Only buyer can cancel");
-
-        delete _openPurchaseProposals[id];
-
-        emit PurchaseCanceled(collection_, tokenId_, paymentToken_);
-    }
-
-    function getOpenSaleProposalById(bytes32 id_) public view returns (OpenSaleProposal memory proposal) {
-        require(_openSaleProposals[id_].price > 0, "Unexistent proposal");
-        proposal = _openSaleProposals[id_];
-    }
-
-    function getOpenSaleProposal(
-        address collection_,
-        uint256 tokenId_,
-        address paymentToken_
-    ) public view returns (OpenSaleProposal memory proposal, bytes32 id) {
-        // not using encodePacked to avoid collisions
-        id = keccak256(abi.encode(collection_, tokenId_, paymentToken_));
-        proposal = getOpenSaleProposalById(id);
-    }
-
-    function getOpenPurchaseProposalById(bytes32 id_)
-        public
-        view
-        returns (OpenPurchaseProposal memory proposal)
-    {
-        require(_openPurchaseProposals[id_].price > 0, "Unexistent proposal");
-        proposal = _openPurchaseProposals[id_];
-    }
-
-    function getOpenPurchaseProposal(
-        address collection_,
-        uint256 tokenId_,
-        address paymentToken_
-    ) public view returns (OpenPurchaseProposal memory proposal, bytes32 id) {
-        // not using encodePacked to avoid collisions
-        id = keccak256(abi.encode(collection_, tokenId_, paymentToken_));
-        proposal = getOpenPurchaseProposalById(id);
     }
 
     // solhint-disable-next-line
