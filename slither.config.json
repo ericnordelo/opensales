@@ -1,0 +1,10 @@
+{
+  "printers_to_run": "human-summary",
+  "exclude_informational": false,
+  "solc_remaps": ["@openzeppelin/=node_modules/@openzeppelin/", "@chainlink/=node_modules/@chainlink/"],
+  "exclude_low": false,
+  "exclude_medium": false,
+  "exclude_high": false,
+  "disable_color": false,
+  "legacy_ast": false
+}
