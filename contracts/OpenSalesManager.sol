@@ -200,6 +200,12 @@ contract OpenSalesManager is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownabl
         emit PurchaseProposed(collection_, tokenId_, paymentToken_, price_);
     }
 
+    /**
+     * @notice allows to cancel a sale proposal
+     * @param collection_ the address of the collection where the token belongs to
+     * @param tokenId_ the id of the token to sell
+     * @param paymentToken_ the address of the token to use for payment
+     */
     function cancelSaleProposal(
         address collection_,
         uint256 tokenId_,
@@ -218,6 +224,12 @@ contract OpenSalesManager is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownabl
         emit SaleCanceled(collection_, tokenId_, paymentToken_);
     }
 
+    /**
+     * @notice allows to cancel a purchase proposal
+     * @param collection_ the address of the collection where the token belongs to
+     * @param tokenId_ the id of the token to sell
+     * @param paymentToken_ the address of the token to use for payment
+     */
     function cancelPurchaseProposal(
         address collection_,
         uint256 tokenId_,
@@ -236,11 +248,21 @@ contract OpenSalesManager is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownabl
         emit PurchaseCanceled(collection_, tokenId_, paymentToken_);
     }
 
+    /**
+     * @notice getter to consult a sale proposal definition by id
+     * @param id_ the id of the proposal (keccak256 hash of the collection, token id, and payment token)
+     */
     function getOpenSaleProposalById(bytes32 id_) public view returns (OpenSaleProposal memory proposal) {
         require(_openSaleProposals[id_].price > 0, "Non-existent proposal");
         proposal = _openSaleProposals[id_];
     }
 
+    /**
+     * @notice getter to consult a sale proposal definition
+     * @param collection_ the address of the collection where the token belongs to
+     * @param tokenId_ the id of the token to sell
+     * @param paymentToken_ the address of the token to use for payment
+     */
     function getOpenSaleProposal(
         address collection_,
         uint256 tokenId_,
@@ -251,6 +273,10 @@ contract OpenSalesManager is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownabl
         proposal = getOpenSaleProposalById(id);
     }
 
+    /**
+     * @notice getter to consult a purchase proposal definition by id
+     * @param id_ the id of the proposal (keccak256 hash of the collection, token id, and payment token)
+     */
     function getOpenPurchaseProposalById(bytes32 id_)
         public
         view
@@ -260,6 +286,12 @@ contract OpenSalesManager is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownabl
         proposal = _openPurchaseProposals[id_];
     }
 
+    /**
+     * @notice getter to consult a purchase proposal definition
+     * @param collection_ the address of the collection where the token belongs to
+     * @param tokenId_ the id of the token to sell
+     * @param paymentToken_ the address of the token to use for payment
+     */
     function getOpenPurchaseProposal(
         address collection_,
         uint256 tokenId_,
@@ -270,6 +302,9 @@ contract OpenSalesManager is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownabl
         proposal = getOpenPurchaseProposalById(id);
     }
 
+    /**
+     * @dev helper for trying to automatically sell a sale proposal
+     */
     function _tryToSell(
         OpenPurchaseProposal memory purchaseProposal_,
         address moneyBeneficiary_,
@@ -300,6 +335,9 @@ contract OpenSalesManager is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownabl
         sold = true;
     }
 
+    /**
+     * @dev helper for trying to automatically buy from a purchase proposal
+     */
     function _tryToBuy(
         OpenSaleProposal memory saleProposal_,
         address tokenBeneficiary_,
