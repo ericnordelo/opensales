@@ -10,22 +10,62 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./Structs.sol";
 
 contract OpenSalesManager is ReentrancyGuardUpgradeable, UUPSUpgradeable, OwnableUpgradeable {
-    uint256 public constant SALE_DURATION = 1 weeks;
-
-    /// @notice the token used for payments
-    IERC20 public usdToken;
-
     /// @dev the sale proposal data structures
     mapping(bytes32 => OpenSaleProposal) private _openSaleProposals;
 
     /// @dev the purchase proposal data structures
     mapping(bytes32 => OpenPurchaseProposal) private _openPurchaseProposals;
 
+    /**
+     * @dev emitted when a sale is completed
+     * @param collection the address of the NFT collection contract
+     * @param tokenId the id of the NFT
+     * @param paymentToken the address of the ERC20 token used for payment
+     * @param price the amount of paymentToken used for payment
+     */
     event SaleCompleted(address collection, uint256 tokenId, address paymentToken, uint256 price);
+
+    /**
+     * @dev emitted when a sale is proposed
+     * @param collection the address of the NFT collection contract
+     * @param tokenId the id of the NFT
+     * @param paymentToken the address of the ERC20 token that should be used for payment
+     * @param price the amount of paymentToken that should be paid
+     */
     event SaleProposed(address collection, uint256 tokenId, address paymentToken, uint256 price);
+
+    /**
+     * @dev emitted when a sale proposal is canceled
+     * @param collection the address of the NFT collection contract
+     * @param tokenId the id of the NFT
+     * @param paymentToken the address of the ERC20 token proposed for payment
+     */
     event SaleCanceled(address collection, uint256 tokenId, address paymentToken);
+
+    /**
+     * @dev emitted when a purchase is completed
+     * @param collection the address of the NFT collection contract
+     * @param tokenId the id of the NFT
+     * @param paymentToken the address of the ERC20 token used for payment
+     * @param price the amount of paymentToken used for payment
+     */
     event PurchaseCompleted(address collection, uint256 tokenId, address paymentToken, uint256 price);
+
+    /**
+     * @dev emitted when a purchase is proposed
+     * @param collection the address of the NFT collection contract
+     * @param tokenId the id of the NFT
+     * @param paymentToken the address of the ERC20 token that should be used for payment
+     * @param price the amount of paymentToken that should be paid
+     */
     event PurchaseProposed(address collection, uint256 tokenId, address paymentToken, uint256 price);
+
+    /**
+     * @dev emitted when a purchase proposal is canceled
+     * @param collection the address of the NFT collection contract
+     * @param tokenId the id of the NFT
+     * @param paymentToken the address of the ERC20 token proposed for payment
+     */
     event PurchaseCanceled(address collection, uint256 tokenId, address paymentToken);
 
     /**
@@ -42,6 +82,15 @@ contract OpenSalesManager is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownabl
         __UUPSUpgradeable_init();
     }
 
+    /**
+     * @notice allows to approve an intention of sale at a price
+     * @dev the token will be tried to sell in the same transaction if a matching purchase proposal is found
+     * @param collection_ the address of the collection where the token belongs to
+     * @param tokenId_ the id of the token to sell
+     * @param paymentToken_ the address of the token to use for payment
+     * @param price_ the price of the sale proposal
+     * @param beneficiary_ the address receiving the payment tokens if the sale is executed
+     */
     function approveSale(
         address collection_,
         uint256 tokenId_,
