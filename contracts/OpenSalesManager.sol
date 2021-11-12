@@ -9,6 +9,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./Structs.sol";
 
+/**
+ * @title sales and purchase interest manager
+ * @author Eric Nordelo eric.nordelo39@gmail.com
+ */
 contract OpenSalesManager is ReentrancyGuardUpgradeable, UUPSUpgradeable, OwnableUpgradeable {
     /// @dev the sale proposal data structures
     mapping(bytes32 => OpenSaleProposal) private _openSaleProposals;
