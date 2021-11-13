@@ -1,4 +1,4 @@
-# Open Sales Manager contracts
+# Open Sales Marketplace contracts
 
 ## Overview
 
