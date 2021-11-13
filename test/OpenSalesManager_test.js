@@ -37,9 +37,17 @@ describe('OpenSalesManager', function () {
       it('emits SaleProposed if match not found', async () => {
         const { user } = await getNamedAccounts();
 
-        let tx = await this.openSalesManager.approveSale(this.collection.address, 0, this.usdt.address, 1000, user, {
-          from: user,
-        });
+        let tx = await this.openSalesManager.approveSale(
+          this.collection.address,
+          0,
+          this.usdt.address,
+          1000,
+          user,
+          constants.ZERO_ADDRESS,
+          {
+            from: user,
+          }
+        );
 
         expectEvent(tx, 'SaleProposed', {
           collection: this.collection.address,
@@ -53,21 +61,31 @@ describe('OpenSalesManager', function () {
         const { user } = await getNamedAccounts();
 
         // create the proposal
-        await this.openSalesManager.approveSale(this.collection.address, 0, this.usdt.address, 1000, user, {
-          from: user,
-        });
+        await this.openSalesManager.approveSale(
+          this.collection.address,
+          0,
+          this.usdt.address,
+          1000,
+          user,
+          constants.ZERO_ADDRESS,
+          {
+            from: user,
+          }
+        );
 
         // use the getter to consult
         const { proposal, id } = await this.openSalesManager.getOpenSaleProposal(
           this.collection.address,
           0,
-          this.usdt.address
+          this.usdt.address,
+          1000,
+          user
         );
 
         let expectedId = web3.utils.keccak256(
           web3.eth.abi.encodeParameters(
-            ['address', 'uint256', 'address'],
-            [this.collection.address, 0, this.usdt.address]
+            ['address', 'uint256', 'address', 'uint256', 'address'],
+            [this.collection.address, 0, this.usdt.address, 1000, user]
           )
         );
 
@@ -83,7 +101,13 @@ describe('OpenSalesManager', function () {
       it('getter reverts for unexistent proposal', async () => {
         // use the getter to consult
         await expectRevert(
-          this.openSalesManager.getOpenSaleProposal(this.collection.address, 0, this.usdt.address),
+          this.openSalesManager.getOpenSaleProposal(
+            this.collection.address,
+            0,
+            this.usdt.address,
+            1000,
+            this.usdt.address
+          ),
           'Non-existent proposal'
         );
       });
@@ -104,6 +128,7 @@ describe('OpenSalesManager', function () {
             this.usdt.address,
             purchasePriceOffer,
             user,
+            constants.ZERO_ADDRESS,
             {
               from: user,
             }
@@ -129,6 +154,7 @@ describe('OpenSalesManager', function () {
               this.usdt.address,
               purchasePriceOffer,
               alice,
+              user,
               {
                 from: bob,
               }
@@ -160,6 +186,7 @@ describe('OpenSalesManager', function () {
               this.usdt.address,
               purchasePriceOffer,
               user,
+              user,
               {
                 from: user,
               }
@@ -184,6 +211,7 @@ describe('OpenSalesManager', function () {
             this.usdt.address,
             purchasePriceOffer + 100,
             user,
+            user,
             {
               from: user,
             }
@@ -206,6 +234,7 @@ describe('OpenSalesManager', function () {
           0,
           constants.ZERO_ADDRESS,
           100,
+          constants.ZERO_ADDRESS,
           constants.ZERO_ADDRESS
         ),
         'Only owner can approve'
@@ -219,6 +248,7 @@ describe('OpenSalesManager', function () {
           1,
           constants.ZERO_ADDRESS,
           100,
+          constants.ZERO_ADDRESS,
           constants.ZERO_ADDRESS
         ),
         'ERC721: owner query for nonexistent token'
@@ -253,6 +283,7 @@ describe('OpenSalesManager', function () {
             this.usdt.address,
             100,
             constants.ZERO_ADDRESS,
+            constants.ZERO_ADDRESS,
             { from: user }
           ),
           'Not enough balance'
@@ -271,6 +302,7 @@ describe('OpenSalesManager', function () {
           this.usdt.address,
           1000,
           user,
+          constants.ZERO_ADDRESS,
           {
             from: user,
           }
@@ -291,21 +323,31 @@ describe('OpenSalesManager', function () {
         await this.usdt.transfer(user, 1000);
 
         // create the proposal
-        await this.openSalesManager.approvePurchase(this.collection.address, 0, this.usdt.address, 1000, user, {
-          from: user,
-        });
+        await this.openSalesManager.approvePurchase(
+          this.collection.address,
+          0,
+          this.usdt.address,
+          1000,
+          user,
+          constants.ZERO_ADDRESS,
+          {
+            from: user,
+          }
+        );
 
         // use the getter to consult
         const { proposal, id } = await this.openSalesManager.getOpenPurchaseProposal(
           this.collection.address,
           0,
-          this.usdt.address
+          this.usdt.address,
+          1000,
+          user
         );
 
         let expectedId = web3.utils.keccak256(
           web3.eth.abi.encodeParameters(
-            ['address', 'uint256', 'address'],
-            [this.collection.address, 0, this.usdt.address]
+            ['address', 'uint256', 'address', 'uint256', 'address'],
+            [this.collection.address, 0, this.usdt.address, 1000, user]
           )
         );
 
@@ -321,7 +363,13 @@ describe('OpenSalesManager', function () {
       it('getter reverts for unexistent proposal', async () => {
         // use the getter to consult
         await expectRevert(
-          this.openSalesManager.getOpenPurchaseProposal(this.collection.address, 0, this.usdt.address),
+          this.openSalesManager.getOpenPurchaseProposal(
+            this.collection.address,
+            0,
+            this.usdt.address,
+            1000,
+            constants.ZERO_ADDRESS
+          ),
           'Non-existent proposal'
         );
       });
@@ -333,9 +381,17 @@ describe('OpenSalesManager', function () {
           const { user } = await getNamedAccounts();
 
           // create the sale proposal
-          await this.openSalesManager.approveSale(this.collection.address, 0, this.usdt.address, salePriceOffer, user, {
-            from: user,
-          });
+          await this.openSalesManager.approveSale(
+            this.collection.address,
+            0,
+            this.usdt.address,
+            salePriceOffer,
+            user,
+            constants.ZERO_ADDRESS,
+            {
+              from: user,
+            }
+          );
         });
 
         describe('try to buy method', () => {
@@ -349,13 +405,13 @@ describe('OpenSalesManager', function () {
             await this.usdt.approve(this.openSalesManager.address, salePriceOffer, { from: bob });
             await this.collection.approve(this.openSalesManager.address, 0, { from: user });
 
-            // purchase with greater price than the one in sale proposal
             let tx = await this.openSalesManager.approvePurchase(
               this.collection.address,
               0,
               this.usdt.address,
               salePriceOffer,
               alice,
+              user,
               {
                 from: bob,
               }
@@ -374,7 +430,7 @@ describe('OpenSalesManager', function () {
           });
 
           it('emits PurchaseProposed if match found and not enough allowance', async () => {
-            const { bob, alice } = await getNamedAccounts();
+            const { user, bob, alice } = await getNamedAccounts();
 
             // transfer the balances first
             await this.usdt.transfer(bob, salePriceOffer);
@@ -389,6 +445,7 @@ describe('OpenSalesManager', function () {
               this.usdt.address,
               salePriceOffer,
               alice,
+              user,
               {
                 from: bob,
               }
@@ -412,6 +469,7 @@ describe('OpenSalesManager', function () {
             0,
             this.usdt.address,
             salePriceOffer - 100,
+            user,
             user,
             {
               from: deployer,
@@ -442,15 +500,23 @@ describe('OpenSalesManager', function () {
       // mint the token
       await this.collection.safeMint(user);
 
-      await this.openSalesManager.approveSale(this.collection.address, 0, this.usdt.address, 1000, user, {
-        from: user,
-      });
+      await this.openSalesManager.approveSale(
+        this.collection.address,
+        0,
+        this.usdt.address,
+        1000,
+        user,
+        constants.ZERO_ADDRESS,
+        {
+          from: user,
+        }
+      );
     });
 
     it('reverts if caller is not the owner', async () => {
-      const { bob } = await getNamedAccounts();
+      const { user, bob } = await getNamedAccounts();
 
-      let tx = this.openSalesManager.cancelSaleProposal(this.collection.address, 0, this.usdt.address, {
+      let tx = this.openSalesManager.cancelSaleProposal(this.collection.address, 0, this.usdt.address, 1000, user, {
         from: bob,
       });
 
@@ -460,9 +526,16 @@ describe('OpenSalesManager', function () {
     it('emit SaleCanceled when the owner cancels', async () => {
       const { user } = await getNamedAccounts();
 
-      let tx = await this.openSalesManager.cancelSaleProposal(this.collection.address, 0, this.usdt.address, {
-        from: user,
-      });
+      let tx = await this.openSalesManager.cancelSaleProposal(
+        this.collection.address,
+        0,
+        this.usdt.address,
+        1000,
+        user,
+        {
+          from: user,
+        }
+      );
 
       expectEvent(tx, 'SaleCanceled', {
         collection: this.collection.address,
@@ -487,15 +560,23 @@ describe('OpenSalesManager', function () {
 
       await this.usdt.transfer(user, 1000);
 
-      await this.openSalesManager.approvePurchase(this.collection.address, 0, this.usdt.address, 1000, user, {
-        from: user,
-      });
+      await this.openSalesManager.approvePurchase(
+        this.collection.address,
+        0,
+        this.usdt.address,
+        1000,
+        user,
+        constants.ZERO_ADDRESS,
+        {
+          from: user,
+        }
+      );
     });
 
     it('reverts if caller is not the owner', async () => {
-      const { bob } = await getNamedAccounts();
+      const { user, bob } = await getNamedAccounts();
 
-      let tx = this.openSalesManager.cancelPurchaseProposal(this.collection.address, 0, this.usdt.address, {
+      let tx = this.openSalesManager.cancelPurchaseProposal(this.collection.address, 0, this.usdt.address, 1000, user, {
         from: bob,
       });
 
@@ -505,9 +586,16 @@ describe('OpenSalesManager', function () {
     it('emit PurchaseCanceled when the owner cancels', async () => {
       const { user } = await getNamedAccounts();
 
-      let tx = await this.openSalesManager.cancelPurchaseProposal(this.collection.address, 0, this.usdt.address, {
-        from: user,
-      });
+      let tx = await this.openSalesManager.cancelPurchaseProposal(
+        this.collection.address,
+        0,
+        this.usdt.address,
+        1000,
+        user,
+        {
+          from: user,
+        }
+      );
 
       expectEvent(tx, 'PurchaseCanceled', {
         collection: this.collection.address,

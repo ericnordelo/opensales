@@ -94,40 +94,48 @@ contract OpenSalesManager is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownabl
      * @param paymentToken_ the address of the token to use for payment
      * @param price_ the price of the sale proposal
      * @param beneficiary_ the address receiving the payment tokens if the sale is executed
+     * @param buyerToMatch_ the address to get the id for the match
      */
     function approveSale(
         address collection_,
         uint256 tokenId_,
         address paymentToken_,
         uint256 price_,
-        address beneficiary_
+        address beneficiary_,
+        address buyerToMatch_
     ) external nonReentrant {
         // check if is the token owner
         require(IERC721(collection_).ownerOf(tokenId_) == msg.sender, "Only owner can approve");
 
         // not using encodePacked to avoid collisions
-        bytes32 id = keccak256(abi.encode(collection_, tokenId_, paymentToken_));
+        bytes32 id = keccak256(abi.encode(collection_, tokenId_, paymentToken_, price_, msg.sender));
 
         // try to sell it in the moment if possible
-        if (_openPurchaseProposals[id].price > 0) {
-            OpenPurchaseProposal memory purchaseProposal = _openPurchaseProposals[id];
+        if (buyerToMatch_ != address(0)) {
+            bytes32 matchId = keccak256(
+                abi.encode(collection_, tokenId_, paymentToken_, price_, buyerToMatch_)
+            );
 
-            // if the amount is enough
-            if (purchaseProposal.price >= price_) {
-                // allowance can't be enough at this moment, or could have been canceled
-                if (_tryToSell(purchaseProposal, beneficiary_, price_)) {
-                    delete _openPurchaseProposals[id];
+            if (_openPurchaseProposals[matchId].price > 0) {
+                OpenPurchaseProposal memory purchaseProposal = _openPurchaseProposals[matchId];
 
-                    // if there was a previous SaleProposal delete it, because the sale was already executed
-                    if (_openSaleProposals[id].collection != address(0)) {
-                        delete _openSaleProposals[id];
+                // if the amount is enough
+                if (purchaseProposal.price >= price_) {
+                    // allowance can't be enough at this moment, or could have been canceled
+                    if (_tryToSell(purchaseProposal, beneficiary_, price_)) {
+                        delete _openPurchaseProposals[matchId];
+
+                        // if there was a previous SaleProposal delete it, because the sale was already executed
+                        if (_openSaleProposals[id].collection != address(0)) {
+                            delete _openSaleProposals[id];
+                        }
+
+                        emit SaleCompleted(collection_, tokenId_, paymentToken_, price_);
+                        return;
+                    } else {
+                        // the proposal has not the right allowance, so has to be removed
+                        delete _openPurchaseProposals[id];
                     }
-
-                    emit SaleCompleted(collection_, tokenId_, paymentToken_, price_);
-                    return;
-                } else {
-                    // the proposal has not the right allowance, so has to be removed
-                    delete _openPurchaseProposals[id];
                 }
             }
         }
@@ -153,40 +161,46 @@ contract OpenSalesManager is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownabl
      * @param paymentToken_ the address of the token to use for payment
      * @param price_ the price of the sale proposal
      * @param beneficiary_ the address receiving the NFT if the purchase is executed
+     * @param sellerToMatch_ the address to get the id for the match
      */
     function approvePurchase(
         address collection_,
         uint256 tokenId_,
         address paymentToken_,
         uint256 price_,
-        address beneficiary_
+        address beneficiary_,
+        address sellerToMatch_
     ) external nonReentrant {
         require(IERC20(paymentToken_).balanceOf(msg.sender) >= price_, "Not enough balance");
 
         // not using encodePacked to avoid collisions
-        bytes32 id = keccak256(abi.encode(collection_, tokenId_, paymentToken_));
+        bytes32 id = keccak256(abi.encode(collection_, tokenId_, paymentToken_, price_, msg.sender));
 
-        // if purchase proposal exists for this token, revert if new price is smaller,
-        // also avoid price to be 0
-        require(price_ > _openPurchaseProposals[id].price, "New price under the current price");
+        require(price_ > 0, "Price can't be 0");
 
         // try to sell it in the moment if possible
-        if (_openSaleProposals[id].price > 0) {
-            OpenSaleProposal memory saleProposal = _openSaleProposals[id];
+        if (sellerToMatch_ != address(0)) {
+            bytes32 matchId = keccak256(
+                abi.encode(collection_, tokenId_, paymentToken_, price_, sellerToMatch_)
+            );
 
-            // if the amount is enough
-            if (saleProposal.price <= price_) {
-                // allowance can't be enough at this moment, or could have been canceled
-                if (_tryToBuy(saleProposal, beneficiary_, price_)) {
-                    delete _openSaleProposals[id];
+            if (_openSaleProposals[matchId].price > 0) {
+                OpenSaleProposal memory saleProposal = _openSaleProposals[matchId];
 
-                    // if there was another PurchaseProposal keep it
+                // if the amount is enough
+                if (saleProposal.price <= price_) {
+                    // allowance can't be enough at this moment, or could have been canceled
+                    if (_tryToBuy(saleProposal, beneficiary_, price_)) {
+                        delete _openSaleProposals[matchId];
 
-                    emit PurchaseCompleted(collection_, tokenId_, paymentToken_, price_);
-                    return;
-                } else {
-                    // the proposal has not the right allowance, so has to be removed
-                    delete _openSaleProposals[id];
+                        // if there was another PurchaseProposal keep it
+
+                        emit PurchaseCompleted(collection_, tokenId_, paymentToken_, price_);
+                        return;
+                    } else {
+                        // the proposal has not the right allowance, so has to be removed
+                        delete _openSaleProposals[matchId];
+                    }
                 }
             }
         }
@@ -209,16 +223,22 @@ contract OpenSalesManager is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownabl
      * @param collection_ the address of the collection where the token belongs to
      * @param tokenId_ the id of the token to sell
      * @param paymentToken_ the address of the token to use for payment
+     * @param price_ the price of the proposal
+     * @param owner_ the owner of the token
      */
     function cancelSaleProposal(
         address collection_,
         uint256 tokenId_,
-        address paymentToken_
+        address paymentToken_,
+        uint256 price_,
+        address owner_
     ) external {
         (OpenSaleProposal memory proposal, bytes32 id) = getOpenSaleProposal(
             collection_,
             tokenId_,
-            paymentToken_
+            paymentToken_,
+            price_,
+            owner_
         );
 
         require(proposal.owner == msg.sender, "Only owner can cancel");
@@ -233,16 +253,22 @@ contract OpenSalesManager is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownabl
      * @param collection_ the address of the collection where the token belongs to
      * @param tokenId_ the id of the token to sell
      * @param paymentToken_ the address of the token to use for payment
+     * @param price_ the price of the proposal
+     * @param buyer_ the buyer
      */
     function cancelPurchaseProposal(
         address collection_,
         uint256 tokenId_,
-        address paymentToken_
+        address paymentToken_,
+        uint256 price_,
+        address buyer_
     ) external {
         (OpenPurchaseProposal memory proposal, bytes32 id) = getOpenPurchaseProposal(
             collection_,
             tokenId_,
-            paymentToken_
+            paymentToken_,
+            price_,
+            buyer_
         );
 
         require(proposal.buyer == msg.sender, "Only buyer can cancel");
@@ -266,14 +292,18 @@ contract OpenSalesManager is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownabl
      * @param collection_ the address of the collection where the token belongs to
      * @param tokenId_ the id of the token to sell
      * @param paymentToken_ the address of the token to use for payment
+     * @param price_ the price of the proposal
+     * @param owner_ the owner of the token
      */
     function getOpenSaleProposal(
         address collection_,
         uint256 tokenId_,
-        address paymentToken_
+        address paymentToken_,
+        uint256 price_,
+        address owner_
     ) public view returns (OpenSaleProposal memory proposal, bytes32 id) {
         // not using encodePacked to avoid collisions
-        id = keccak256(abi.encode(collection_, tokenId_, paymentToken_));
+        id = keccak256(abi.encode(collection_, tokenId_, paymentToken_, price_, owner_));
         proposal = getOpenSaleProposalById(id);
     }
 
@@ -295,14 +325,18 @@ contract OpenSalesManager is ReentrancyGuardUpgradeable, UUPSUpgradeable, Ownabl
      * @param collection_ the address of the collection where the token belongs to
      * @param tokenId_ the id of the token to sell
      * @param paymentToken_ the address of the token to use for payment
+     * @param price_ the price of the proposal
+     * @param buyer_ the buyer
      */
     function getOpenPurchaseProposal(
         address collection_,
         uint256 tokenId_,
-        address paymentToken_
+        address paymentToken_,
+        uint256 price_,
+        address buyer_
     ) public view returns (OpenPurchaseProposal memory proposal, bytes32 id) {
         // not using encodePacked to avoid collisions
-        id = keccak256(abi.encode(collection_, tokenId_, paymentToken_));
+        id = keccak256(abi.encode(collection_, tokenId_, paymentToken_, price_, buyer_));
         proposal = getOpenPurchaseProposalById(id);
     }
 
